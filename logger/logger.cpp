@@ -19,7 +19,6 @@ namespace LOGGER
 		m_strLogPath(strLogPath),
 		m_strLogName(strLogName)
 	{
-		//初始化
 		m_fh = 0;
 		m_uiSize = 0;
 		m_nLogRow = 0;
@@ -33,228 +32,220 @@ namespace LOGGER
 		{
 			m_strLogPath.append("\\");
 		}
-		//创建文件夹
-		MakeSureDirectoryPathExists(m_strLogPath.c_str());
-		//创建日志文件
+		
+		MakeSureDirectoryPathExists(m_strLogPath.c_str()); /**< 创建文件夹 */
+		/**
+	     * 创建日志文件
+	     */
 		if (m_strLogName.empty())
 		{
 			time_t curTime;
 			time(&curTime);
 			tm tm1;
 			localtime_s(&tm1, &curTime);
-			//日志的名称如：201601012130.log
+			/**
+		     * 日志的名称：201601012130.log
+		     */
 			m_strLogName = FormatString("%04d%02d%02d%02d%02d%02d.log", tm1.tm_year + 1900, tm1.tm_mon + 1, tm1.tm_mday, tm1.tm_hour, tm1.tm_min, tm1.tm_sec);
 		}
 		m_strLogName = m_strLogPath + m_strLogName;
 
-		//以追加的方式打开文件流
+		/**
+		 * 以追加的方式打开文件流
+		 */
 		errno_t err = _sopen_s(&m_fh, m_strLogName.c_str(), _O_CREAT | _O_RDWR, _SH_DENYNO, _S_IREAD | _S_IWRITE);
 
 		InitializeCriticalSection(&m_cs);
 	}
 
-
-	//析构函数
 	CLogger::~CLogger()
 	{
-		//释放临界区
-		DeleteCriticalSection(&m_cs);
-		//关闭文件
-		if (m_fh != 0)
-			_close(m_fh);
+		DeleteCriticalSection(&m_cs); /**< 释放临界区 */
+
+		if (m_fh != 0) 
+			_close(m_fh); /**< 关闭文件 */
 	}
 
-	//文件全路径得到文件名
 	const char *CLogger::path_file(const char *path, char splitter)
 	{
 		return strrchr(path, splitter) ? strrchr(path, splitter) + 1 : path;
 	}
 
-	//写严重错误信息
 	void CLogger::TraceFatal(const char *lpcszFormat, ...)
 	{
-		//判断当前的写日志级别
 		if (EnumLogLevel::LogLevel_Fatal > m_nLogLevel)
 			return;
+
 		string strResult;
-		if (NULL != lpcszFormat)
+		if (lpcszFormat != NULL)
 		{
 			va_list marker = NULL;
-			va_start(marker, lpcszFormat); //初始化变量参数
-			size_t nLength = _vscprintf(lpcszFormat, marker) + 1; //获取格式化字符串长度
-			std::vector<char> vBuffer(nLength, '\0'); //创建用于存储格式化字符串的字符数组
+			va_start(marker, lpcszFormat); /**< 初始化变量参数 */
+			size_t nLength = _vscprintf(lpcszFormat, marker) + 1; /**< 获取格式化字符串长度 */
+			std::vector<char> vBuffer(nLength, '\0'); /**< 创建用于存储格式化字符串的字符数组 */
 			int nWritten = _vsnprintf_s(&vBuffer[0], vBuffer.size(), nLength, lpcszFormat, marker);
 			if (nWritten > 0)
 			{
 				strResult = &vBuffer[0];
 			}
-			va_end(marker); //重置变量参数
+			va_end(marker);
 		}
 		if (strResult.empty())
-		{
 			return;
-		}
+
 		string strLog = strFatalPrefix;
 		strLog.append(GetTime()).append(strResult);
 
-		//写日志文件
 		Trace(strLog);
 	}
 
-	//写错误信息
 	void CLogger::TraceError(const char *lpcszFormat, ...)
 	{
-		//判断当前的写日志级别
 		if (EnumLogLevel::LogLevel_Error > m_nLogLevel)
 			return;
+
 		string strResult;
-		if (NULL != lpcszFormat)
+		if (lpcszFormat != NULL)
 		{
 			va_list marker = NULL;
-			va_start(marker, lpcszFormat); //初始化变量参数
-			size_t nLength = _vscprintf(lpcszFormat, marker) + 1; //获取格式化字符串长度
-			std::vector<char> vBuffer(nLength, '\0'); //创建用于存储格式化字符串的字符数组
+			va_start(marker, lpcszFormat);
+			size_t nLength = _vscprintf(lpcszFormat, marker) + 1;
+			std::vector<char> vBuffer(nLength, '\0');
 			int nWritten = _vsnprintf_s(&vBuffer[0], vBuffer.size(), nLength, lpcszFormat, marker);
 			if (nWritten > 0)
 			{
 				strResult = &vBuffer[0];
 			}
-			va_end(marker); //重置变量参数
+			va_end(marker);
 		}
 		if (strResult.empty())
-		{
 			return;
-		}
+
 		string strLog = strErrorPrefix;
 		strLog.append(GetTime()).append(strResult);
 
-		//写日志文件
 		Trace(strLog);
 	}
 
-	//写警告信息
 	void CLogger::TraceWarning(const char *lpcszFormat, ...)
 	{
-		//判断当前的写日志级别
 		if (EnumLogLevel::LogLevel_Warning > m_nLogLevel)
 			return;
+
 		string strResult;
-		if (NULL != lpcszFormat)
+		if (lpcszFormat != NULL)
 		{
 			va_list marker = NULL;
-			va_start(marker, lpcszFormat); //初始化变量参数
-			size_t nLength = _vscprintf(lpcszFormat, marker) + 1; //获取格式化字符串长度
-			std::vector<char> vBuffer(nLength, '\0'); //创建用于存储格式化字符串的字符数组
+			va_start(marker, lpcszFormat);
+			size_t nLength = _vscprintf(lpcszFormat, marker) + 1;
+			std::vector<char> vBuffer(nLength, '\0');
 			int nWritten = _vsnprintf_s(&vBuffer[0], vBuffer.size(), nLength, lpcszFormat, marker);
 			if (nWritten > 0)
 			{
 				strResult = &vBuffer[0];
 			}
-			va_end(marker); //重置变量参数
+			va_end(marker);
 		}
 		if (strResult.empty())
-		{
 			return;
-		}
+
 		string strLog = strWarningPrefix;
 		strLog.append(GetTime()).append(strResult);
 
-		//写日志文件
 		Trace(strLog);
 	}
 
-
-	//写一般信息
 	void CLogger::TraceInfo(const char *lpcszFormat, ...)
 	{
-		//判断当前的写日志级别
 		if (EnumLogLevel::LogLevel_Info > m_nLogLevel)
 			return;
+
 		string strResult;
-		if (NULL != lpcszFormat)
+		if (lpcszFormat != NULL)
 		{
 			va_list marker = NULL;
-			va_start(marker, lpcszFormat); //初始化变量参数
-			size_t nLength = _vscprintf(lpcszFormat, marker) + 1; //获取格式化字符串长度
-			std::vector<char> vBuffer(nLength, '\0'); //创建用于存储格式化字符串的字符数组
+			va_start(marker, lpcszFormat);
+			size_t nLength = _vscprintf(lpcszFormat, marker) + 1;
+			std::vector<char> vBuffer(nLength, '\0');
 			int nWritten = _vsnprintf_s(&vBuffer[0], vBuffer.size(), nLength, lpcszFormat, marker);
 			if (nWritten > 0)
 			{
 				strResult = &vBuffer[0];
 			}
-			va_end(marker); //重置变量参数
+			va_end(marker);
 		}
 		if (strResult.empty())
-		{
 			return;
-		}
+
 		string strLog = strInfoPrefix;
 		strLog.append(GetTime()).append(strResult);
 
-		//写日志文件
 		Trace(strLog);
 	}
 
-	//获取系统当前时间
 	string CLogger::GetTime()
 	{
 		time_t curTime;
 		time(&curTime);
 		tm tm1;
 		localtime_s(&tm1, &curTime);
-		//2016-01-01 21:30:00
-		string strTime = FormatString("%04d-%02d-%02d %02d:%02d:%02d ", tm1.tm_year + 1900, tm1.tm_mon + 1, tm1.tm_mday, tm1.tm_hour, tm1.tm_min, tm1.tm_sec);
+
+		string strTime = FormatString("%04d-%02d-%02d %02d:%02d:%02d ", 
+			tm1.tm_year + 1900, tm1.tm_mon + 1, tm1.tm_mday, tm1.tm_hour, tm1.tm_min, tm1.tm_sec);
 
 		return strTime;
 	}
 
-	//改变写日志级别
 	void CLogger::ChangeLogLevel(EnumLogLevel nLevel)
 	{
 		m_nLogLevel = nLevel;
 	}
 
-	//写文件操作
 	void CLogger::Trace(const string &strLog)
 	{
 		try
 		{
-			//进入临界区
-			EnterCriticalSection(&m_cs);
+			EnterCriticalSection(&m_cs); /**< 进入临界区 */
 
 			if (m_nLogRow >= MAX_ROWS)
 			{
 				if (m_fh != 0)
 					_close(m_fh);
 				m_fh = 0;
-				//创建新日志文件
+				/**
+                 * 创建新日志
+                 */
 				time_t curTime;
 				time(&curTime);
 				tm tm1;
 				localtime_s(&tm1, &curTime);
 
-				m_strLogName = FormatString("%04d%02d%02d%02d%02d%02d.log", tm1.tm_year + 1900, tm1.tm_mon + 1, tm1.tm_mday, tm1.tm_hour, tm1.tm_min, tm1.tm_sec);
+				m_strLogName = FormatString("%04d%02d%02d%02d%02d%02d.log", 
+					tm1.tm_year + 1900, tm1.tm_mon + 1, tm1.tm_mday, tm1.tm_hour, tm1.tm_min, tm1.tm_sec);
 				m_strLogName = m_strLogPath + m_strLogName;
 				_sopen_s(&m_fh, m_strLogName.c_str(), _O_CREAT | _O_RDWR, _SH_DENYNO, _S_IREAD | _S_IWRITE);
 				if (m_fh != 0)
 					m_nLogRow = 0;
 			}
-			//若文件没有打开，则重新打开
-			if (m_fh == 0)
+
+			if (m_fh == 0) /**< 确保文件打开 */
 			{
 				errno_t err = _sopen_s(&m_fh, m_strLogName.c_str(), _O_CREAT | _O_RDWR, _SH_DENYNO, _S_IREAD | _S_IWRITE);
 				if (err != 0)
 					return;
 			}
-			//写日志信息到文件
+			/**
+			 * 写日志信息到文件
+			 */
 			m_uiSize = (unsigned int)strLog.length();
 			_write(m_fh, strLog.c_str(), m_uiSize);
 			m_nLogRow++;
 
-			//离开临界区
-			LeaveCriticalSection(&m_cs);
+			LeaveCriticalSection(&m_cs); /**< 离开临界区 */
 		}
-		//若发生异常，则先离开临界区，防止死锁
+		/**
+		 * 若发生异常，则先离开临界区，防止死锁
+		 */
 		catch (...)
 		{
 			LeaveCriticalSection(&m_cs);
@@ -275,19 +266,20 @@ namespace LOGGER
 	string CLogger::FormatString(const char *lpcszFormat, ...)
 	{
 		string strResult;
-		if (NULL != lpcszFormat)
+		if (lpcszFormat != NULL)
 		{
 			va_list marker = NULL;
-			va_start(marker, lpcszFormat); //初始化变量参数
-			size_t nLength = _vscprintf(lpcszFormat, marker) + 1; //获取格式化字符串长度
-			std::vector<char> vBuffer(nLength, '\0'); //创建用于存储格式化字符串的字符数组
+			va_start(marker, lpcszFormat);
+			size_t nLength = _vscprintf(lpcszFormat, marker) + 1;
+			std::vector<char> vBuffer(nLength, '\0');
 			int nWritten = _vsnprintf_s(&vBuffer[0], vBuffer.size(), nLength, lpcszFormat, marker);
 			if (nWritten > 0)
 			{
 				strResult = &vBuffer[0];
 			}
-			va_end(marker); //重置变量参数
+			va_end(marker);
 		}
+
 		return strResult;
 	}
 }

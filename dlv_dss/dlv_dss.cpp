@@ -485,7 +485,7 @@ int main(int argc, char* argv[])
 		printf_s("<-- 请输入redis的ip地址:\n");
 		for (;;)
 		{
-			scanf_s("%s", szRip, sizeof(szRip));
+			scanf_s("%s", szRip, (unsigned int)sizeof(szRip));
 			scanf_s("%*[^\n]");
 			if (check_ip(szRip) == 0)
 				break;
@@ -519,7 +519,7 @@ int main(int argc, char* argv[])
 		printf_s("<-- 请输入redis的验证密码(1~32个字符):\n");
 		for (;;)
 		{
-			scanf_s("%s", szRpwd, sizeof(szRpwd));
+			scanf_s("%s", szRpwd, (unsigned int)sizeof(szRpwd));
 			scanf_s("%*[^\n]");
 			if (strlen(szRpwd) == 0)
 				printf_s("->> 密码长度错误. 请输入redis的验证密码(1~32个字符):\n");
@@ -559,7 +559,7 @@ int main(int argc, char* argv[])
 		printf_s("<-- 请输入7016服务器的ip地址:\n");
 		for (;;)
 		{
-			scanf_s("%s", szDip, sizeof(szDip));
+			scanf_s("%s", szDip, (unsigned int)sizeof(szDip));
 			scanf_s("%*[^\n]");
 			if (check_ip(szDip) == 0)
 				break;
@@ -591,7 +591,7 @@ int main(int argc, char* argv[])
 		printf_s("<-- 请输入7016服务器登录用户名:\n");
 		for (;;)
 		{
-			scanf_s("%s", szDuser, sizeof(szDuser));
+			scanf_s("%s", szDuser, (unsigned int)sizeof(szDuser));
 			scanf_s("%*[^\n]");
 			if (strlen(szDuser) == 0)
 				printf_s("->> 用户名不能超过32个字符. 请输入7016服务器登录密码:\n");
@@ -606,7 +606,7 @@ int main(int argc, char* argv[])
 		printf_s("<-- 请输入7016服务器登录密码:\n");
 		for (;;)
 		{
-			scanf_s("%s", szDpwd, sizeof(szDpwd));
+			scanf_s("%s", szDpwd, (unsigned int)sizeof(szDpwd));
 			scanf_s("%*[^\n]");
 			if (strlen(szDpwd) == 0)
 				printf_s("->> 密码不能超过32个字符. 请输入7016服务器登录密码:\n");
@@ -639,7 +639,7 @@ int main(int argc, char* argv[])
 		printf_s("<-- 请输入录像文件存储根目录路径(1~64字符):\n");
 		for (;;)
 		{
-			scanf_s("%s", szVideoPath, sizeof(szVideoPath));
+			scanf_s("%s", szVideoPath, (unsigned int)sizeof(szVideoPath));
 			scanf_s("%*[^\n]");
 			int ret = check_path(szVideoPath);
 			if (ret == -1)

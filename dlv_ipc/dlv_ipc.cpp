@@ -13,44 +13,59 @@
 #include <stdlib.h>
 #include "dlv_ipc.h"
 
-// 大华ipc
+/**
+ * 大华ipc所需 h文件
+ */
 #include "../include/dh_ipc/dhnetsdk.h"
 #include "../include/dh_ipc/dhconfigsdk.h"
 
-// redis
+/**
+ * redis所需 h文件
+ */
 #include "../include/acl/acl_cpp/lib_acl.hpp"
 #include "../include/acl/lib_acl.h"
-using namespace std;
 
-// logger
 #include "../logger/Logger.h"
+
+using namespace std;
 using namespace LOGGER;
+
 CLogger g_log(LogLevel_Info, CLogger::GetAppPathA().append("ipc_log\\"));
 
 const LPCWSTR  lpTitle = TEXT("IPC_SERVICE V1.0.190823");
 bool g_isExit = false;
-const DWORD g_lsize = 4294967290;           // 大华netsdk回调函数(fTimeDownLoadPosCB)，最后一次返回下载大小dwDownLoadSize = 4294967295
+const DWORD g_lsize = 4294967290; /**< 大华netsdk回调函数(fTimeDownLoadPosCB)，最后一次返回下载大小dwDownLoadSize = 4294967295 */
 HANDLE g_hEvent[DLV_MAX_THREAD];
 DLV_DATACB g_datacb[DLV_MAX_THREAD];
 DLV_THREAD_PARAM g_param[DLV_MAX_THREAD];
 
-// 获取console窗口的窗口句柄
+/**
+ * 获取console窗口的窗口句柄
+ * @return {HWND} 当前窗口句柄
+ */
 HWND GetSelfWindow()
 {
 	return FindWindow(NULL, lpTitle);
 }
 
-// 控制光标显示状态
+/**
+ * 控制光标显示状态
+ * @param flag ture显示，false隐藏
+ */
 void SetCursor(bool flag)
 {
 	HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
 	CONSOLE_CURSOR_INFO CursorInfo;
-	GetConsoleCursorInfo(handle, &CursorInfo);    // 获取控制台光标信息
-	CursorInfo.bVisible = flag;                   // 隐藏控制台光标
-	SetConsoleCursorInfo(handle, &CursorInfo);    // 设置控制台光标状态
+	GetConsoleCursorInfo(handle, &CursorInfo);    /**< 获取控制台光标信息 */
+	CursorInfo.bVisible = flag;                   /**< 隐藏控制台光标 */
+	SetConsoleCursorInfo(handle, &CursorInfo);    /**< 设置控制台光标状态 */
 }
 
-// 校验IP是否合法
+/**
+ * 校验IP是否合法
+ * @param *ip ip地址数组
+ * @return {int} 0:匹配 -1：错误
+ */
 int check_ip(char* ip)
 {
 	char s[256] = { 0 };
@@ -65,21 +80,11 @@ int check_ip(char* ip)
 	return 0;
 }
 
-// 计算long值长度
-int GetLongLen(unsigned long x)
-{
-	int leng = 0;
-
-	while (x)
-	{
-		x /= 10;
-		leng++;
-	}
-
-	return leng;
-}
-
-// 创建文件夹
+/**
+ * 创建文件夹
+ * @param fileName 文件名及路径字符串
+ * @return {bool} true:成功，false:失败
+ */
 bool MakeDir(const char* fileName)
 {
 	const char* tag;
@@ -112,10 +117,8 @@ string TcharToChar(TCHAR * tchar)
 		char * _char = new char[100];
 		int iLength;
 
-		// 获取字节长度    
-		iLength = WideCharToMultiByte(CP_ACP, 0, s, -1, NULL, 0, NULL, NULL);
-		// 将tchar值赋给_char      
-		WideCharToMultiByte(CP_ACP, 0, s, -1, _char, iLength, NULL, NULL);
+		iLength = WideCharToMultiByte(CP_ACP, 0, s, -1, NULL, 0, NULL, NULL); /**< 获取字节长度 */ 
+		WideCharToMultiByte(CP_ACP, 0, s, -1, _char, iLength, NULL, NULL); /**< 将tchar值赋给_char */
 		string t(_char);
 		sz.append(t);
 
@@ -147,10 +150,10 @@ int checkDrive(string drives, string userPath)
 	if ((driveTag > 'A' && driveTag<'Z') || (driveTag>'a' && driveTag < 'z'))
 	{
 		position = (int)drives.find(driveTag);
-		if (position == drives.npos)        // 输入的盘符不存在
+		if (position == drives.npos) /**< 输入的盘符不存在 */
 			return -1;
 	}
-	else                                    // 非法盘符
+	else /**< 非法盘符 */
 		return -2;
 
 	return 0;
@@ -187,7 +190,11 @@ int check_path(const char* userPath)
 	return 0;
 }
 
-// 字符串格式时间转time
+/**
+ * 字符串格式时间转time
+ * @param szTime 字符串格式时间
+ * @return {time_t} 转换后的时间值
+ */
 time_t StringToTime(const char* szTime)
 {
 	const char* cha = szTime;
@@ -195,15 +202,15 @@ time_t StringToTime(const char* szTime)
 	int year, month, day, hour, minute, second;
 
 	sscanf_s(cha, "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second);
-	tm_.tm_year = year - 1900;    // 年，由于tm结构体存储的是从1900年开始的时间，所以tm_year为int临时变量减去1900
-	tm_.tm_mon = month - 1;       // 月，由于tm结构体的月份存储范围为0-11，所以tm_mon为int临时变量减去1
+	tm_.tm_year = year - 1900;    /**< 年，由于tm结构体存储的是从1900年开始的时间，所以tm_year为int临时变量减去1900 */
+	tm_.tm_mon = month - 1;       /**< 月，由于tm结构体的月份存储范围为0-11，所以tm_mon为int临时变量减去1 */
 	tm_.tm_mday = day;
 	tm_.tm_hour = hour;
 	tm_.tm_min = minute;
 	tm_.tm_sec = second;
-	tm_.tm_isdst = 0;             // 非夏令时
+	tm_.tm_isdst = 0;             /**< 非夏令时 */
 
-	time_t t_ = mktime(&tm_);     // 将tm结构体转换成time_t格式
+	time_t t_ = mktime(&tm_);     /**< 将tm结构体转换成time_t格式 */
 	return t_;
 }
 
@@ -219,7 +226,9 @@ void GetNetTime(time_t tm, NET_TIME& tmStartTime, NET_TIME& tmEndTime)
 	localtime_s(&t_s, &tt_s);
 	localtime_s(&t_e, &tt_e);
 
-	// 转换为netskd所需时间格式
+	/**
+     * 转换为netskd所需时间格式
+     */
 	tmStartTime.dwYear = t_s.tm_year + 1900;
 	tmStartTime.dwMonth = t_s.tm_mon + 1;
 	tmStartTime.dwDay = t_s.tm_mday;
@@ -235,24 +244,25 @@ void GetNetTime(time_t tm, NET_TIME& tmStartTime, NET_TIME& tmEndTime)
 	tmEndTime.dwSecond = t_e.tm_sec;
 }
 
-// IPC断线回调
+/**
+ * IPC断线回调函数
+ */
 void CALL_METHOD Disconnect(LLONG lLoginID, char *pchDVRIP, LONG nDVRPort, LDWORD dwUser)
 {
 	printf_s("->> Receive disconnect message, where ip:[%s] and port:[%d] and lHandle:[%lld].\n",
 		pchDVRIP, nDVRPort, lLoginID);
 }
 
-// IPC下载回调
+/**
+ * IPC下载回调函数
+ */
 int CALL_METHOD fDataCB(LLONG lRealHandle, DWORD dwDataType, BYTE *pBuffer, DWORD dwBufSize, LDWORD dwUser)
 {
-	// 重要,回调中需要根据所转的码流类型判断 dwDataType
 	if (dwDataType != NET_DATA_CALL_BACK_VALUE + EM_REAL_DATA_TYPE_GBPS
 		&& dwDataType != NET_DATA_CALL_BACK_VALUE + EM_REAL_DATA_TYPE_TS
 		&& dwDataType != NET_DATA_CALL_BACK_VALUE + EM_REAL_DATA_TYPE_MP4
 		&& dwDataType != NET_DATA_CALL_BACK_VALUE + EM_REAL_DATA_TYPE_H264)
 	{
-		//printf_s("->> 码流类型错误: handle[%lld], datatype[%lld], size[%lld], user[%lld].\n",
-		//	lRealHandle, dwDataType, dwBufSize, dwUser);
 		return 1;
 	}
 	if (((DLV_DATACB*)dwUser)->file == NULL)
@@ -278,7 +288,9 @@ int CALL_METHOD fDataCB(LLONG lRealHandle, DWORD dwDataType, BYTE *pBuffer, DWOR
 	return 1;
 }
 
-// 按时间回放进度回调函数原形
+/**
+ * IPC按时间回放进度回调函数
+ */
 void CALL_METHOD fTimeDownLoadPosCB(LLONG lPlayHandle, DWORD dwTotalSize, DWORD dwDownLoadSize, int index, NET_RECORDFILE_INFO recordfileinfo, LDWORD dwUser)
 {	
 	if (dwDownLoadSize > g_lsize)
@@ -287,8 +299,9 @@ void CALL_METHOD fTimeDownLoadPosCB(LLONG lPlayHandle, DWORD dwTotalSize, DWORD 
 	return;
 }
 
-// redis
-// 验证密码
+/**
+ * redis验证密码
+ */
 bool redis_auth(acl::redis_connection& redis, const char* szpwd)
 {
 	acl::string passwd(szpwd);
@@ -299,7 +312,9 @@ bool redis_auth(acl::redis_connection& redis, const char* szpwd)
 
 	return true;
 }
-
+/**
+ * redis数据库选择
+ */
 bool redis_select(acl::redis_connection& redis, int n)
 {
 	redis.clear();
@@ -363,7 +378,6 @@ bool redis_rpop(acl::redis_list &redis, const char* key_rec, char* szTime, size_
 
 	return true;
 }
-// redis
 
 unsigned int __stdcall ThreadFun(PVOID pM)
 {
@@ -414,7 +428,9 @@ unsigned int __stdcall ThreadFun(PVOID pM)
 	DLV_IPC_LOGIN dlv_ipc[DLV_MAX_IPC];
 	for (int i = 0; i < DLV_MAX_IPC; i++)
 	{
-		// 初始化结构体
+		/**
+         * 初始化结构体
+         */
 		dlv_ipc[i].lLoginHandle = 0;
 		dlv_ipc[i].nChan = 0;
 		dlv_ipc[i].nPort = 37777;
@@ -430,11 +446,9 @@ unsigned int __stdcall ThreadFun(PVOID pM)
 	redis_h.set_client(&client);
 	for (int i = 0; i < DLV_MAX_IPC; i++)
 	{
-		// 获取IPC登录信息
 		key_ipc.format("%s_%d_%d", __key_ipc.c_str(), pParam->nQueue, i);
-		if (redis_hmget(redis_h, key_ipc.c_str(), dlv_ipc[i]) == true)
+		if (redis_hmget(redis_h, key_ipc.c_str(), dlv_ipc[i]) == true) /**< 从队列中获取IPC的登录信息 */
 		{
-			// 登录IPC
 			dlv_ipc[i].lLoginHandle = CLIENT_LoginEx2(dlv_ipc[i].szIpAddr, dlv_ipc[i].nPort, dlv_ipc[i].szUser,
 				                                      dlv_ipc[i].szPwd, (EM_LOGIN_SPAC_CAP_TYPE)0, NULL, &stLoginInfo, &nErrcode);
 			if (dlv_ipc[i].lLoginHandle != 0)
@@ -479,8 +493,10 @@ unsigned int __stdcall ThreadFun(PVOID pM)
 	stIn.dwDataUser = (LDWORD)&g_datacb[pParam->nQueue];
 
 	key_rec.format("%s_%d", __key_rec.c_str(), pParam->nQueue);
-
-	// 从redis消息队列中不停获取记录, 下载视频
+ 
+	/**
+	 * 从redis消息队列中不停获取记录, 下载视频
+	 */
 	acl::redis_list redis_li(&client);
 	for (;;)
 	{
@@ -490,9 +506,9 @@ unsigned int __stdcall ThreadFun(PVOID pM)
 			break;
 		}
 
-		if (redis_rpop(redis_li, key_rec.c_str(), szRec, sizeof(szRec)) == false)        // 获取list中记录
+		if (redis_rpop(redis_li, key_rec.c_str(), szRec, sizeof(szRec)) == false)
 		{
-			err = redis_li.result_error();        // 检测redis是否断连
+			err = redis_li.result_error(); /**< 检测redis是否断连 */
 			if (err == "NOAUTH Authentication required.")
 			{
 				redis_auth(redis_con, pParam->szRedisPwd);
@@ -523,7 +539,9 @@ unsigned int __stdcall ThreadFun(PVOID pM)
 		else
 			continue;
 
-		// 匹配下载记录中对应的IPC
+		/**
+	     * 匹配下载记录中对应的IPC
+	     */
 		nQueue = -1;
 		for (int i = 0; i < DLV_MAX_IPC; i++)
 		{
@@ -536,10 +554,15 @@ unsigned int __stdcall ThreadFun(PVOID pM)
 		if (nQueue == -1)
 			continue;
 
-		// 解析时间
+		/**
+		 * 解析时间
+		 */
 		tt = StringToTime(szRecTime);
 		GetNetTime(tt, tmStartTime, tmEndTime);
-		// 生成路径
+
+		/**
+		 * 生成mp4文件存储路径
+		 */
 		sscanf_s(szRecTime, "%d-%d-%d %d:%d:%d", &nY, &nM, &nD, &nH, &nMin, &nS);
 		if (pParam->szFilePath[strlen(pParam->szFilePath) - 1] == '\\')
 			sprintf_s(szFilePath, sizeof(szFilePath), "%s%s\\%s\\%04d%02d%02d\\%04d%02d%02d%02d%02d%02d.mp4", 
@@ -551,12 +574,14 @@ unsigned int __stdcall ThreadFun(PVOID pM)
 		if (MakeDir(szFilePath) == false)
 		{
 			printf_s("->> channel[%-2d], 无法创建下载路径[%s].\n", pParam->nQueue, szFilePath);
-			// 输出log
+
 			g_log.TraceError("非法路径. lpush rec_%d \"%s,%s\"\n", pParam->nQueue, dlv_ipc[nQueue].szIpAddr, szRecTime);
 			continue;
 		}
 
-		// 判断是否重连IPC
+		/**
+		 * 判断是否需要重连IPC
+		 */
 		if (dlv_ipc[nQueue].bDisconn == true)
 		{
 			dlv_ipc[nQueue].lLoginHandle = CLIENT_LoginEx2(dlv_ipc[nQueue].szIpAddr, dlv_ipc[nQueue].nPort, dlv_ipc[nQueue].szUser,
@@ -570,14 +595,16 @@ unsigned int __stdcall ThreadFun(PVOID pM)
 			{
 				lastErr = CLIENT_GetLastError();
 				printf_s("->> channel[%-2d], IPC[%s]重连失败, 错误代码[%lu].\n", pParam->nQueue, dlv_ipc[nQueue].szIpAddr, lastErr);
-				// 输出log
+				
 				g_log.TraceError("重连失败. lpush rec_%d \"%s,%s\"\n", pParam->nQueue, dlv_ipc[nQueue].szIpAddr, szRecTime);
 
 				continue;
 			}	
 		}
 
-		// 下载视频
+		/**
+		 * 从正确的IPC下载视频
+		 */
 		lHandle = 0;
 		g_datacb[pParam->nQueue].file = NULL;
 		stIn.stStartTime = tmStartTime;
@@ -593,7 +620,7 @@ unsigned int __stdcall ThreadFun(PVOID pM)
             if (lastErr == NET_NO_RECORD_FOUND)
 			{
 				printf_s("->> channel[%-2d], IPC[%s], 下载视频[%s]失败, 错误代码[%lu]:[查询不到录像].\n", pParam->nQueue, dlv_ipc[nQueue].szIpAddr, szFilePath, lastErr);
-				// 输出log
+
 				g_log.TraceError("查无录像. rec_%d \"%s,%s\"\n", pParam->nQueue, dlv_ipc[nQueue].szIpAddr, szRecTime);
 			}
 			else
@@ -604,7 +631,7 @@ unsigned int __stdcall ThreadFun(PVOID pM)
 				dlv_ipc[nQueue].bDisconn = true;
 
 				printf_s("->> channel[%-2d], IPC[%s], 下载视频[%s]失败, 错误代码[%lu]:[IPC已掉线].\n", pParam->nQueue, dlv_ipc[nQueue].szIpAddr, szFilePath, lastErr);
-				// 输出log
+
 				g_log.TraceError("设备掉线. lpush rec_%d \"%s,%s\"\n", pParam->nQueue, dlv_ipc[nQueue].szIpAddr, szRecTime);
 			}
 		}
@@ -620,14 +647,13 @@ unsigned int __stdcall ThreadFun(PVOID pM)
 			{
 				lastErr = CLIENT_GetLastError();
 				printf_s("->> channel[%-2d], IPC[%s], 下载视频[%s]超时, handle[%lld], 错误代码[%lu].\n", pParam->nQueue, dlv_ipc[nQueue].szIpAddr, szFilePath, lHandle, lastErr);
-				// 输出log
+
 				g_log.TraceError("下载超时. lpush rec_%d \"%s,%s\"\n", pParam->nQueue, dlv_ipc[nQueue].szIpAddr, szRecTime);
 			}
 				
 			if (CLIENT_StopDownload(lHandle) == false)
 				printf_s("->> channel[%-2d], IPC[%s], StopDownload失败, 错误代码[%lu].\n", pParam->nQueue, dlv_ipc[nQueue].szIpAddr, CLIENT_GetLastError());
 		}
-		// 下载视频
 	}
 
 	for (int i = 0; i < nSuccess; i++)
@@ -661,7 +687,7 @@ int main(int argc, char* argv[])
 		printf_s("<-- 请输入redis的ip地址:\n");
 		for (;;)
 		{
-			scanf_s("%s", szIpAddr, sizeof(szIpAddr));
+			scanf_s("%s", szIpAddr, (unsigned int)sizeof(szIpAddr));
 			scanf_s("%*[^\n]");
 			if (check_ip(szIpAddr) == 0)
 				break;
@@ -683,7 +709,7 @@ int main(int argc, char* argv[])
 			else
 				break;
 		}
-		// 组成acl调用字符串
+
 		sprintf_s(szIpAddr, sizeof(szIpAddr), "%s:%d", szIpAddr, nPort);
 	}
 	else
@@ -696,7 +722,7 @@ int main(int argc, char* argv[])
 		printf_s("<-- 请输入redis的验证密码(1~32个字符):\n");
 		for (;;)
 		{
-			scanf_s("%s", szPwd, sizeof(szPwd));
+			scanf_s("%s", szPwd, (unsigned int)sizeof(szPwd));
 			scanf_s("%*[^\n]");
 			if (strlen(szPwd) == 0)
 				printf_s("->> 密码长度错误. 请输入redis的验证密码(1~32个字符):\n");
@@ -745,7 +771,7 @@ int main(int argc, char* argv[])
 		printf_s("<-- 请输入录像文件存储根目录路径(1~64字符):\n");
 		for (;;)
 		{
-			scanf_s("%s", szFilePath, sizeof(szFilePath));
+			scanf_s("%s", szFilePath, (unsigned int)sizeof(szFilePath));
 			scanf_s("%*[^\n]");
 
 			int ret = check_path(szFilePath);
@@ -767,8 +793,7 @@ int main(int argc, char* argv[])
 	printf_s("--> [IPC_SERVICE]服务正在启动...\n");	
 	printf_s("--> 退出程序请输入(E)\n");
 
-	// 初始化SDK资源,设置断线回调函数
-	CLIENT_Init(Disconnect, NULL);
+	CLIENT_Init(Disconnect, NULL); /**< 初始化大华SDK资源,设置断线回调函数 */
 
 	for (int i = 0; i < nThread_Num; i++)
 	{
@@ -804,9 +829,8 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	// 等待所有线程结束
-	WaitForMultipleObjects(nThread_Num, handle, true, INFINITE);
-	// 清理线程资源
+	WaitForMultipleObjects(nThread_Num, handle, true, INFINITE); /**< 等待所有线程结束 */
+
 	for (int i = 0; i < nThread_Num; i++)
 	{
 		if (handle[i] != 0)
@@ -815,8 +839,7 @@ int main(int argc, char* argv[])
 		    CloseHandle(g_hEvent[i]);
 	}	
 
-	// 清理SDK资源
-	CLIENT_Cleanup();
+	CLIENT_Cleanup(); /**< 清理大华SDK资源 */
 
 	return 0;
 }
